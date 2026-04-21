@@ -375,8 +375,10 @@ The test program verifies:
 - Integrity checking (detects corrupted objects)
 
 **📸 Screenshot 1A:** Output of `./test_objects` showing all tests passing.
+<img width="1468" height="553" alt="1A" src="https://github.com/user-attachments/assets/9adcd9af-6923-42cd-8f72-563c98dda2e8" />
 
 **📸 Screenshot 1B:** `find .pes/objects -type f` showing the sharded directory structure.
+<img width="1375" height="280" alt="1B" src="https://github.com/user-attachments/assets/a390ea91-0165-44ef-b15c-3d7dfb2906e7" />
 
 ---
 
@@ -407,8 +409,11 @@ The test program verifies:
 - Deterministic serialization (same entries in any order → identical output)
 
 **📸 Screenshot 2A:** Output of `./test_tree` showing all tests passing.
+<img width="1436" height="409" alt="2A" src="https://github.com/user-attachments/assets/e0d685b0-b9e4-405f-a227-15c7bdb329b7" />
 
 **📸 Screenshot 2B:** Pick a tree object from `find .pes/objects -type f` and run `xxd .pes/objects/XX/YYY... | head -20` to show the raw binary format.
+
+<img width="1420" height="577" alt="2B" src="https://github.com/user-attachments/assets/0d97f4fd-a717-4e0a-8365-27a28b7af455" />
 
 ---
 
@@ -465,8 +470,11 @@ cat .pes/index    # Human-readable text format
 ```
 
 **📸 Screenshot 3A:** Run `./pes init`, `./pes add file1.txt file2.txt`, `./pes status` — show the output.
+<img width="1446" height="1110" alt="3A" src="https://github.com/user-attachments/assets/35383339-a5df-4474-a801-8332e9688d94" />
+
 
 **📸 Screenshot 3B:** `cat .pes/index` showing the text-format index with your entries.
+<img width="1405" height="175" alt="3B" src="https://github.com/user-attachments/assets/ff44cab8-0fb5-49dd-ae66-9c6c340decda" />
 
 ---
 
@@ -516,10 +524,13 @@ make test-integration
 ```
 
 **📸 Screenshot 4A:** Output of `./pes log` showing three commits with hashes, authors, timestamps, and messages.
+<img width="1248" height="1216" alt="4A" src="https://github.com/user-attachments/assets/bff532b6-ce66-4ee8-b7dd-418f14d63a9b" />
 
 **📸 Screenshot 4B:** `find .pes -type f | sort` showing object store growth after three commits.
+<img width="1110" height="456" alt="4B" src="https://github.com/user-attachments/assets/05b1f57c-70fb-4236-85d5-eef0c0a199e8" />
 
 **📸 Screenshot 4C:** `cat .pes/refs/heads/main` and `cat .pes/HEAD` showing the reference chain.
+<img width="1124" height="172" alt="4C" src="https://github.com/user-attachments/assets/ced36580-e7ad-4772-b5a9-43b57974552f" />
 
 ---
 

@@ -530,17 +530,38 @@ The following questions cover filesystem concepts beyond the implementation scop
 ### Branching and Checkout
 
 **Q5.1:** A branch in Git is just a file in `.git/refs/heads/` containing a commit hash. Creating a branch is creating a file. Given this, how would you implement `pes checkout <branch>` — what files need to change in `.pes/`, and what must happen to the working directory? What makes this operation complex?
+ANSWER:To implement checkout, two things must change in .pes/: first, HEAD must be rewritten to contain ref:
+refs/heads/<branch> pointing to the target branch. Second, the working directory must be updated to
+match the target branch's tree snapshot.
+The complexity lies in the working directory update: the implementation must (1) read the target commit'stree recursively, (2) for every file in the tree, write the blob contents to disk if the file is absent or differs from the index, and (3) remove tracked files that exist in the current branch's tree but not in the target'S tree. This requires walking two trees simultaneously and diffing them. The operation is complex because it must be safe — if anything goes wrong mid-checkout, the repository could be left in a half-switched state with inconsistent files
 
 **Q5.2:** When switching branches, the working directory must be updated to match the target branch's tree. If the user has uncommitted changes to a tracked file, and that file differs between branches, checkout must refuse. Describe how you would detect this "dirty working directory" conflict using only the index and the object store.
+ANSWER: To detect conflicts during checkout without full re-hashing, use the index as the intermediary. For each file tracked in the current index: (1) compare its stored mtime and size against the actual file on disk — if they differ, the working copy is modified (dirty). (2) Then check whether that same path exists in the target branch's tree with a different blob hash. If both conditions are true (file is dirty AND differs between branches), checkout must refuse with an error like 'error: Your local changes would be overwritten by checkout'.
+This approach uses only the index metadata for fast detection — no re-hashing needed unless the mtime/size differ, which is Git's own optimization strategy.
+
 
 **Q5.3:** "Detached HEAD" means HEAD contains a commit hash directly instead of a branch reference. What happens if you make commits in this state? How could a user recover those commits?
+ANSWER: In detached HEAD, .pes/HEAD contains a raw commit hash instead of a branch reference (e.g., d56bf7ac... rather than ref: refs/heads/main). New commits are still created correctly — head_update writes directly to HEAD rather than to a branch file — but no branch pointer advances. Once the user switches to another branch, these commits become unreachable from any ref.
+Recovery is possible as long as garbage collection hasn't run: the user can find the lost commit hash from the terminal's scroll-back history or a saved log, then run pes checkout -b new-branch <hash> to create a branch pointing at it, making the commits reachable again.
 
 ### Garbage Collection and Space Reclamation
 
 **Q6.1:** Over time, the object store accumulates unreachable objects — blobs, trees, or commits that no branch points to (directly or transitively). Describe an algorithm to find and delete these objects. What data structure would you use to track "reachable" hashes efficiently? For a repository with 100,000 commits and 50 branches, estimate how many objects you'd need to visit.
+ANSWER: Algorithm (Mark and Sweep):
+1. Mark phase: Start from all branch refs in .pes/refs/heads/ and HEAD. For each ref, read the commit
+object and add its hash to a reachable hash set. Recursively walk each commit's tree — adding the tree
+hash, then every blob and subtree hash — and follow each commit's parent pointer until reaching the root
+commit.
+2. Sweep phase: Enumerate all files under .pes/objects/. For each file, reconstruct its hash from the path
+(2-char directory + filename). If the hash is NOT in the reachable set, delete the file.
+Data structure: A hash set gives O(1) average lookup per object.
+Estimate for 100,000 commits, 50 branches: Assuming ~10 objects per commit (blobs + trees + commit object), the reachable set contains roughly 1,000,000 objects. GC must visit all of them during mark, plus scan all files on disk during sweep — roughly 2,000,000 object visits total.
 
 **Q6.2:** Why is it dangerous to run garbage collection concurrently with a commit operation? Describe a race condition where GC could delete an object that a concurrent commit is about to reference. How does Git's real GC avoid this?
-
+The race condition:
+Consider this interleaving: (1) A commit operation calls object_write to store a new blob — the blob file
+now exists on disk, but HEAD has not yet been updated. (2) GC runs its mark phase — it walks from HEAD and does NOT see the new blob because HEAD still points to the old commit. The blob is not in the reachable set. (3) GC's sweep phase deletes the blob. (4) The commit operation calls head_update — HEAD now points to a commit whose tree references a deleted blob. The repository is corrupt.
+How Git avoids this: Git uses a grace period — GC never deletes objects created within the last 2 weeks, regardless of reachability, by checking each object file's mtime before deletion. Since a concurrent commit completes in milliseconds, any object it creates will be within the grace window. Git also uses a lock file (.git/gc.pid) to prevent two GC processes from running simultaneously, and ref-locks to ensure refs are not updated mid-walk.
 ---
 
 ## Submission Checklist
